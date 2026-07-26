@@ -11,6 +11,11 @@ app.include_router(products.router)
 app.include_router(prices.router)
 
 
+@app.get("/")
+def root():
+    return {"name": app.title, "status": "ok"}
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
