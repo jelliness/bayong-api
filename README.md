@@ -221,3 +221,47 @@ Authorization was verified the same way: an unauthenticated `POST /categories` r
 login with the wrong password returns 401, `POST /auth/login` with the seeded admin credentials
 returns a working JWT, and that token successfully authorizes a write that a plain `GET` never
 required in the first place.
+
+## Deployment
+
+Free-tier setup: **Neon** for Postgres, **Render** for the API, via `Dockerfile` + `render.yaml`.
+
+### 1. Database — Neon
+
+1. Create a free project at [neon.tech](https://neon.tech).
+2. Copy the connection string it gives you (looks like
+   `postgresql://user:password@ep-xxx-pooler.region.aws.neon.tech/dbname?sslmode=require`).
+3. Adapt it to SQLAlchemy's driver-qualified form — swap the scheme from `postgresql://` to
+   `postgresql+psycopg2://`, keeping `?sslmode=require` (Neon requires SSL):
+
+   ```text
+   postgresql+psycopg2://user:password@ep-xxx-pooler.region.aws.neon.tech/dbname?sslmode=require
+   ```
+
+   This is the value you'll set as `DATABASE_URL` on Render.
+
+### 2. API — Render
+
+1. Push this repo to GitHub (already done — see the repo this README lives in).
+2. On [render.com](https://render.com), **New → Blueprint**, connect the GitHub repo. Render
+   detects `render.yaml` and provisions the `bayong-api` web service on the free plan.
+3. `render.yaml` auto-generates `SECRET_KEY` and defaults `ACCESS_TOKEN_EXPIRE_MINUTES=60`, but
+   `DATABASE_URL` is intentionally left as a manual secret (`sync: false`) — paste the Neon
+   connection string from step 1 into it in the Render dashboard before the first deploy.
+4. On every deploy, the container's `CMD` runs `alembic upgrade head` before starting `uvicorn`
+   (bound to Render's `$PORT`), so schema changes roll out automatically with each push.
+5. Render's `healthCheckPath: /health` (see `render.yaml`) is what Render polls to confirm the
+   service is up.
+
+### Seeding production
+
+`seed.py` is **not** run automatically on deploy — sample data and the default admin account
+aren't something you want auto-created in a real environment. If you do want the demo dataset
+there, run it manually via Render's shell (`python -m seed.seed`) and **immediately change the
+admin password** afterward — `ChangeMe123!` is a known value sitting in the source code.
+
+### Caveat
+
+Render's free web service spins down after ~15 minutes idle; the next request pays a cold-start
+cost (10-30s). Fine for a portfolio/demo link, not for something that needs to always respond
+instantly.

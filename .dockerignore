@@ -1,0 +1,13 @@
+.venv/
+venv/
+**/__pycache__/
+**/*.pyc
+.git/
+.gitignore
+.env
+*.db
+.pytest_cache/
+.vscode/
+.idea/
+run_checks.ps1
+start_dev.ps1
